@@ -131,31 +131,39 @@ print("\n" + "=" * 55)
 print("  TIME-CONFLICT DETECTION")
 print("=" * 55)
 
-# The default plan has no overlaps (tasks are sequential)
+# A) Check the normal sequential plan — should be clean
 time_conflicts = scheduler.detect_time_conflicts(plan)
+print("\n  [A] Normal plan:")
 if time_conflicts:
     for w in time_conflicts:
-        print(f"  WARNING: {w}")
+        print(f"      WARNING: {w}")
 else:
-    print("\n  No time conflicts in the generated plan.")
+    print("      No time conflicts — all tasks are sequential.")
 
-# Manually force overlapping entries to show the detection in action
+# B) Build a realistic scenario: two tasks scheduled at the SAME time
+#    Imagine the owner manually pencils in "Morning walk" and "Vet medication"
+#    for Bolt at minute 0, plus "Feeding" for Gigi also at minute 0.
 from pawpal_system import ScheduleEntry, DailyPlan
-forced_entries = [
-    ScheduleEntry(task=dog.tasks[1], start_minute=0, end_minute=30, reason="forced"),   # Morning walk  0-30
-    ScheduleEntry(task=dog.tasks[3], start_minute=20, end_minute=25, reason="forced"),  # Vet medication 20-25 (same pet overlap)
-    ScheduleEntry(task=cat.tasks[1], start_minute=25, end_minute=45, reason="forced"),  # Play with laser 25-45 (cross-pet overlap with walk)
-]
-forced_plan = DailyPlan(
+
+walk_task = Task(title="Morning walk", duration_minutes=30, priority="high", frequency="daily", pet_name="Bolt")
+meds_task = Task(title="Vet medication", duration_minutes=5, priority="high", frequency="daily", pet_name="Bolt")
+feed_task = Task(title="Feeding", duration_minutes=10, priority="high", frequency="daily", pet_name="Gigi")
+
+conflict_plan = DailyPlan(
     owner_name="Shiam",
-    entries=forced_entries,
-    total_minutes_used=50,
+    entries=[
+        ScheduleEntry(task=walk_task, start_minute=0, end_minute=30, reason="manual"),
+        ScheduleEntry(task=meds_task, start_minute=0, end_minute=5,  reason="manual"),
+        ScheduleEntry(task=feed_task, start_minute=0, end_minute=10, reason="manual"),
+    ],
+    total_minutes_used=45,
     total_minutes_available=90,
 )
-forced_conflicts = scheduler.detect_time_conflicts(forced_plan)
-print(f"\n  Forced overlapping schedule — {len(forced_conflicts)} conflict(s):")
-for w in forced_conflicts:
-    print(f"  WARNING: {w}")
+
+overlap_warnings = scheduler.detect_time_conflicts(conflict_plan)
+print(f"\n  [B] Three tasks all starting at minute 0 — {len(overlap_warnings)} conflict(s):")
+for w in overlap_warnings:
+    print(f"      WARNING: {w}")
 
 # ====================================================
 # 10. Recurring auto-creation on mark_complete
