@@ -32,6 +32,19 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+### Smarter Scheduling
+
+Beyond the base priority-first planner, the Scheduler now supports:
+
+- **Sort by duration** — view tasks shortest-first or longest-first to plan your time at a glance.
+- **Filter by pet or status** — narrow the task list to a single pet or see only completed/incomplete tasks. Filters can be chained (e.g. "Bolt's incomplete tasks, shortest first").
+- **Recurring task handling** — when a daily or weekly task is marked complete, a fresh copy is automatically created for the next occurrence. One-time tasks simply finish.
+- **Conflict detection** — two layers of checks that return warnings instead of crashing:
+  - *Pre-schedule*: flags duplicate task titles on the same pet and per-pet time overload.
+  - *Post-schedule*: scans the generated plan for overlapping time slots and labels each conflict as same-pet or cross-pet.
+
+All features are demonstrated in `main.py`, wired into the Streamlit UI in `app.py`, and covered by 21 passing tests.
+
 ### Suggested workflow
 
 1. Read the scenario carefully and identify requirements and edge cases.

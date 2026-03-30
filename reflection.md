@@ -33,13 +33,11 @@ Reusing `ScheduleEntry` (with a reason string) keeps the output uniform and easi
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler looks at three things. How much time the owner has, how important each task is, and how long it takes. Important stuff like meds and feeding always goes first because you really cant skip those. If two tasks have the same priority, the quicker one wins so we can squeeze more in. Once the time runs out, everything left just gets dropped.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The scheduler just goes down the list from most important to least important and squeezes in whatever fits. It never goes back to rethink earlier choices, so it can miss better combos. It might slot in one big 30 minute task when two smaller 15 minute ones would have covered more ground.
 
 ---
 
