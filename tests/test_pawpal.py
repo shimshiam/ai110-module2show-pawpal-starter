@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from pawpal_system import Task, Pet, Owner, Scheduler
+from pawpal_system import Task, Pet, Owner, Scheduler, ScheduleEntry, DailyPlan
 
 
 def test_mark_complete_changes_status():
@@ -133,21 +133,24 @@ def test_get_recurring_tasks():
 def test_reset_recurring_tasks():
     """Completed recurring tasks should be reset; one-time tasks stay completed."""
     scheduler = _make_scheduler()
-    tasks = scheduler.gather_tasks()
+    # Grab the original 4 tasks before any completions add new instances
+    original_tasks = list(scheduler.gather_tasks())
 
-    # Complete all tasks
-    for t in tasks:
+    # Complete all original tasks (recurring ones will auto-spawn new instances)
+    for t in original_tasks:
         t.mark_complete()
 
+    # Reset should target the 3 completed *original* recurring tasks
+    # (the auto-spawned copies are already incomplete, so they aren't reset)
     reset_count = scheduler.reset_recurring_tasks()
-    assert reset_count == 3  # 3 recurring tasks reset
+    assert reset_count == 3  # 3 recurring originals reset
 
     # The one-time task ("Play") should still be completed
-    play_task = [t for t in tasks if t.title == "Play"][0]
+    play_task = [t for t in original_tasks if t.title == "Play"][0]
     assert play_task.is_completed is True
 
-    # Recurring tasks should be incomplete again
-    walk_task = [t for t in tasks if t.title == "Walk"][0]
+    # Original recurring tasks should be incomplete again
+    walk_task = [t for t in original_tasks if t.title == "Walk"][0]
     assert walk_task.is_completed is False
 
 
@@ -175,3 +178,128 @@ def test_detect_conflicts_time_overload():
     conflicts = scheduler.detect_conflicts()
     # Bolt has 30+15=45 min of tasks but only 20 min available
     assert any("Overload" in c and "Bolt" in c for c in conflicts)
+
+
+# --- recurring auto-creation tests ---
+
+def test_mark_complete_daily_creates_next_instance():
+    """Completing a daily task should add a new incomplete copy to the same pet."""
+    pet = Pet(name="Bolt", species="dog")
+    task = Task(title="Walk", duration_minutes=30, priority="high", frequency="daily", pet_name="")
+    pet.add_task(task)
+
+    assert len(pet.tasks) == 1
+    next_task = task.mark_complete()
+    assert len(pet.tasks) == 2
+
+    # Original is completed
+    assert task.is_completed is True
+    # New instance is incomplete with identical attributes
+    assert next_task is not None
+    assert next_task.is_completed is False
+    assert next_task.title == "Walk"
+    assert next_task.duration_minutes == 30
+    assert next_task.priority == "high"
+    assert next_task.frequency == "daily"
+    assert next_task.pet_name == "Bolt"
+
+
+def test_mark_complete_weekly_creates_next_instance():
+    """Completing a weekly task should also spawn a next occurrence."""
+    pet = Pet(name="Gigi", species="cat")
+    task = Task(title="Grooming", duration_minutes=15, priority="medium", frequency="weekly", pet_name="")
+    pet.add_task(task)
+
+    next_task = task.mark_complete()
+    assert len(pet.tasks) == 2
+    assert next_task is not None
+    assert next_task.frequency == "weekly"
+    assert next_task.is_completed is False
+
+
+def test_mark_complete_once_does_not_create_instance():
+    """Completing a one-time task should NOT create any new instance."""
+    pet = Pet(name="Bolt", species="dog")
+    task = Task(title="Vet visit", duration_minutes=60, priority="high", frequency="once", pet_name="")
+    pet.add_task(task)
+
+    result = task.mark_complete()
+    assert len(pet.tasks) == 1
+    assert result is None
+
+
+def test_mark_complete_without_pet_still_completes():
+    """A task not attached to a pet should complete without error (no auto-creation)."""
+    task = Task(title="Loose task", duration_minutes=10, priority="low", frequency="daily", pet_name="test")
+    result = task.mark_complete()
+    assert task.is_completed is True
+    assert result is None
+
+
+# --- time-conflict detection tests ---
+
+def _make_plan_with_entries(entries, owner_name="Tester"):
+    """Helper: build a DailyPlan from a list of ScheduleEntry objects."""
+    return DailyPlan(
+        owner_name=owner_name,
+        entries=entries,
+        total_minutes_used=sum(e.end_minute - e.start_minute for e in entries),
+        total_minutes_available=120,
+    )
+
+
+def test_detect_time_conflicts_no_overlap():
+    """Sequential entries should produce zero warnings."""
+    scheduler = _make_scheduler()
+    task_a = Task(title="Walk", duration_minutes=30, priority="high", frequency="daily", pet_name="Bolt")
+    task_b = Task(title="Feed", duration_minutes=10, priority="high", frequency="daily", pet_name="Gigi")
+    plan = _make_plan_with_entries([
+        ScheduleEntry(task=task_a, start_minute=0, end_minute=30, reason="test"),
+        ScheduleEntry(task=task_b, start_minute=30, end_minute=40, reason="test"),
+    ])
+    assert scheduler.detect_time_conflicts(plan) == []
+
+
+def test_detect_time_conflicts_same_pet_overlap():
+    """Two tasks for the same pet with overlapping windows should flag a same-pet warning."""
+    scheduler = _make_scheduler()
+    task_a = Task(title="Walk", duration_minutes=30, priority="high", frequency="daily", pet_name="Bolt")
+    task_b = Task(title="Brush", duration_minutes=15, priority="low", frequency="weekly", pet_name="Bolt")
+    plan = _make_plan_with_entries([
+        ScheduleEntry(task=task_a, start_minute=0, end_minute=30, reason="test"),
+        ScheduleEntry(task=task_b, start_minute=20, end_minute=35, reason="test"),
+    ])
+    warnings = scheduler.detect_time_conflicts(plan)
+    assert len(warnings) == 1
+    assert "Same-pet (Bolt)" in warnings[0]
+    assert "share 10 min" in warnings[0]
+
+
+def test_detect_time_conflicts_cross_pet_overlap():
+    """Tasks for different pets with overlapping windows should flag a cross-pet warning."""
+    scheduler = _make_scheduler()
+    task_a = Task(title="Walk", duration_minutes=30, priority="high", frequency="daily", pet_name="Bolt")
+    task_b = Task(title="Feed", duration_minutes=10, priority="high", frequency="daily", pet_name="Gigi")
+    plan = _make_plan_with_entries([
+        ScheduleEntry(task=task_a, start_minute=0, end_minute=30, reason="test"),
+        ScheduleEntry(task=task_b, start_minute=25, end_minute=35, reason="test"),
+    ])
+    warnings = scheduler.detect_time_conflicts(plan)
+    assert len(warnings) == 1
+    assert "Cross-pet (Bolt & Gigi)" in warnings[0]
+    assert "share 5 min" in warnings[0]
+
+
+def test_detect_time_conflicts_multiple_overlaps():
+    """Three mutually overlapping entries should produce three pairwise warnings."""
+    scheduler = _make_scheduler()
+    task_a = Task(title="Walk", duration_minutes=20, priority="high", frequency="daily", pet_name="Bolt")
+    task_b = Task(title="Feed", duration_minutes=20, priority="high", frequency="daily", pet_name="Gigi")
+    task_c = Task(title="Meds", duration_minutes=20, priority="high", frequency="daily", pet_name="Bolt")
+    plan = _make_plan_with_entries([
+        ScheduleEntry(task=task_a, start_minute=0,  end_minute=20, reason="test"),
+        ScheduleEntry(task=task_b, start_minute=5,  end_minute=25, reason="test"),
+        ScheduleEntry(task=task_c, start_minute=10, end_minute=30, reason="test"),
+    ])
+    warnings = scheduler.detect_time_conflicts(plan)
+    assert len(warnings) == 3

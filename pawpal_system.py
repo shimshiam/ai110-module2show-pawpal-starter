@@ -12,10 +12,28 @@ class Task:
     frequency: str  # "once", "daily", or "weekly"
     pet_name: str
     is_completed: bool = False
+    _owner_pet: Optional["Pet"] = field(default=None, repr=False, compare=False)
 
-    def mark_complete(self) -> None:
-        """Mark this task as completed."""
+    def mark_complete(self) -> "Optional[Task]":
+        """Mark this task as completed.
+
+        If the task is recurring (daily/weekly) and belongs to a pet,
+        a fresh copy is automatically added to that pet for the next
+        occurrence.  Returns the new Task instance, or None for one-time tasks.
+        """
         self.is_completed = True
+
+        if self.is_recurring() and self._owner_pet is not None:
+            next_task = Task(
+                title=self.title,
+                duration_minutes=self.duration_minutes,
+                priority=self.priority,
+                frequency=self.frequency,
+                pet_name="",
+            )
+            self._owner_pet.add_task(next_task)
+            return next_task
+        return None
 
     def priority_value(self) -> int:
         """Return numeric weight: high=3, medium=2, low=1."""
@@ -35,8 +53,9 @@ class Pet:
     tasks: list[Task] = field(default_factory=list)
 
     def add_task(self, task: Task) -> None:
-        """Add a care task to this pet and auto-set task.pet_name."""
+        """Add a care task to this pet and auto-set task.pet_name and back-reference."""
         task.pet_name = self.name
+        task._owner_pet = self
         self.tasks.append(task)
 
     def remove_task(self, title: str) -> None:
@@ -120,7 +139,7 @@ class Scheduler:
         return fitting, dropped
 
     def detect_conflicts(self) -> list[str]:
-        """Check for scheduling conflicts and return a list of warning strings.
+        """Pre-schedule checks on the raw task list.
 
         Detects:
         - Duplicate task titles assigned to the same pet
@@ -151,6 +170,41 @@ class Scheduler:
                     f"Overload: {pet_name}'s tasks need {total} min "
                     f"but only {self.available_minutes} min available"
                 )
+
+        return warnings
+
+    def detect_time_conflicts(self, plan: "DailyPlan") -> list[str]:
+        """Post-schedule check: scan a generated plan for overlapping time slots.
+
+        Two entries conflict when their time windows overlap.  Warnings are
+        labelled as same-pet or cross-pet so the owner can decide which
+        matters more.
+
+        Returns a list of human-readable warning strings (empty = no conflicts).
+        """
+        warnings: list[str] = []
+        entries = plan.entries
+
+        for i in range(len(entries)):
+            for j in range(i + 1, len(entries)):
+                a, b = entries[i], entries[j]
+
+                # Two ranges overlap when each starts before the other ends
+                if a.start_minute < b.end_minute and b.start_minute < a.end_minute:
+                    overlap_start = max(a.start_minute, b.start_minute)
+                    overlap_end = min(a.end_minute, b.end_minute)
+                    overlap_min = overlap_end - overlap_start
+
+                    if a.task.pet_name == b.task.pet_name:
+                        kind = f"Same-pet ({a.task.pet_name})"
+                    else:
+                        kind = f"Cross-pet ({a.task.pet_name} & {b.task.pet_name})"
+
+                    warnings.append(
+                        f"{kind} overlap: '{a.task.title}' [{a.start_minute}-{a.end_minute}] "
+                        f"and '{b.task.title}' [{b.start_minute}-{b.end_minute}] "
+                        f"share {overlap_min} min"
+                    )
 
         return warnings
 
