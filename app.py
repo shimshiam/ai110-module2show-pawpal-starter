@@ -46,6 +46,10 @@ if st.button("Add Pet"):
     st.session_state.current_pet = new_pet
     st.success(f"Added {pet_name} the {species}!")
 
+# Keep available_minutes in sync whenever the input changes
+if st.session_state.owner is not None:
+    st.session_state.owner.available_minutes = available_minutes
+
 if st.session_state.owner and st.session_state.owner.pets:
     st.write(
         "**Pets:**",
