@@ -18,7 +18,9 @@ if "owner" not in st.session_state:
 if "current_pet" not in st.session_state:
     st.session_state.current_pet = None
 
-# --- Owner & Pet Setup ---
+# ─────────────────────────────────────────────
+#  Owner & Pet Setup
+# ─────────────────────────────────────────────
 st.subheader("Owner & Pet Info")
 
 col_owner, col_pet = st.columns(2)
@@ -32,7 +34,6 @@ with col_pet:
     species = st.selectbox("Species", ["dog", "cat", "other"])
 
 if st.button("Add Pet"):
-    # Create owner on first pet add, reuse after that
     if st.session_state.owner is None:
         st.session_state.owner = Owner(
             name=owner_name, available_minutes=available_minutes, pets=[]
@@ -40,13 +41,11 @@ if st.button("Add Pet"):
     else:
         st.session_state.owner.available_minutes = available_minutes
 
-    # Create pet and add to owner
     new_pet = Pet(name=pet_name, species=species)
     st.session_state.owner.add_pet(new_pet)
     st.session_state.current_pet = new_pet
     st.success(f"Added {pet_name} the {species}!")
 
-# Show current pets
 if st.session_state.owner and st.session_state.owner.pets:
     st.write(
         "**Pets:**",
@@ -55,13 +54,14 @@ if st.session_state.owner and st.session_state.owner.pets:
 
 st.divider()
 
-# --- Task Entry ---
+# ─────────────────────────────────────────────
+#  Task Entry
+# ─────────────────────────────────────────────
 st.subheader("Add Tasks")
 
 if not st.session_state.owner or not st.session_state.owner.pets:
     st.info("Add a pet first before adding tasks.")
 else:
-    # Pick which pet gets the task
     pet_options = {p.name: p for p in st.session_state.owner.pets}
     selected_pet_name = st.selectbox("Assign to pet", list(pet_options.keys()))
 
@@ -107,20 +107,27 @@ else:
 
 st.divider()
 
-# --- Schedule Generation ---
+# ─────────────────────────────────────────────
+#  Schedule Generation
+# ─────────────────────────────────────────────
 st.subheader("Generate Schedule")
 
-# Sort & filter options
+# Sort & filter controls
 col_sort, col_filter_pet, col_filter_status = st.columns(3)
 with col_sort:
-    sort_mode = st.selectbox("Sort tasks by", ["Priority (default)", "Duration (shortest first)", "Duration (longest first)"])
+    sort_mode = st.selectbox(
+        "Sort tasks by",
+        ["Priority (default)", "Duration (shortest first)", "Duration (longest first)"],
+    )
 with col_filter_pet:
     filter_pet = "All"
     if st.session_state.owner and st.session_state.owner.pets:
         pet_names = ["All"] + [p.name for p in st.session_state.owner.pets]
         filter_pet = st.selectbox("Filter by pet", pet_names)
 with col_filter_status:
-    filter_status = st.selectbox("Filter by status", ["All", "Incomplete only", "Completed only"])
+    filter_status = st.selectbox(
+        "Filter by status", ["All", "Incomplete only", "Completed only"]
+    )
 
 if st.button("Generate schedule"):
     if not st.session_state.owner or not st.session_state.owner.pets:
@@ -130,65 +137,102 @@ if st.button("Generate schedule"):
     else:
         scheduler = Scheduler(st.session_state.owner)
 
-        # Conflict detection
+        # ── Pre-schedule conflict checks ──
         conflicts = scheduler.detect_conflicts()
         if conflicts:
+            st.write("#### Pre-Schedule Warnings")
             for warning in conflicts:
-                st.warning(f"Conflict: {warning}")
+                st.warning(warning)
 
-        # Recurring task info
+        # ── Recurring task summary ──
         recurring = scheduler.get_recurring_tasks()
         if recurring:
-            st.caption(f"{len(recurring)} recurring task(s) will repeat automatically.")
+            st.success(
+                f"{len(recurring)} recurring task(s) detected — "
+                "a new instance is created automatically when completed."
+            )
 
+        # ── Generate the plan ──
         plan = scheduler.generate_plan()
 
-        # Apply filters to display
-        display_entries = plan.entries
+        # ── Post-schedule time-conflict checks ──
+        time_conflicts = scheduler.detect_time_conflicts(plan)
+        if time_conflicts:
+            st.write("#### Time-Overlap Warnings")
+            for warning in time_conflicts:
+                st.warning(warning)
+
+        # ── Apply filters using Scheduler methods ──
+        all_tasks = [e.task for e in plan.entries]
 
         if filter_pet != "All":
-            display_entries = [e for e in display_entries if e.task.pet_name == filter_pet]
+            filtered_tasks = scheduler.filter_by_pet(all_tasks, filter_pet)
+        else:
+            filtered_tasks = all_tasks
 
         if filter_status == "Incomplete only":
-            display_entries = [e for e in display_entries if not e.task.is_completed]
+            filtered_tasks = scheduler.filter_by_status(filtered_tasks, completed=False)
         elif filter_status == "Completed only":
-            display_entries = [e for e in display_entries if e.task.is_completed]
+            filtered_tasks = scheduler.filter_by_status(filtered_tasks, completed=True)
 
-        # Apply sort to display
+        # ── Apply sort using Scheduler methods ──
         if sort_mode == "Duration (shortest first)":
-            display_entries = sorted(display_entries, key=lambda e: e.task.duration_minutes)
+            filtered_tasks = scheduler.sort_by_duration(filtered_tasks, ascending=True)
         elif sort_mode == "Duration (longest first)":
-            display_entries = sorted(display_entries, key=lambda e: e.task.duration_minutes, reverse=True)
+            filtered_tasks = scheduler.sort_by_duration(filtered_tasks, ascending=False)
+        else:
+            filtered_tasks = scheduler.sort_by_priority(filtered_tasks)
 
+        # Build a lookup from task -> entry for time display
+        entry_map = {id(e.task): e for e in plan.entries}
+
+        # ── Display scheduled tasks ──
         st.write(f"### Schedule for {plan.owner_name}")
-        if display_entries:
+        if filtered_tasks:
             st.table(
                 [
                     {
-                        "Time": f"{e.start_minute}–{e.end_minute} min",
-                        "Task": e.task.title,
-                        "Pet": e.task.pet_name,
-                        "Priority": e.task.priority,
-                        "Frequency": e.task.frequency,
-                        "Reason": e.reason,
+                        "Time": (
+                            f"{entry_map[id(t)].start_minute}–{entry_map[id(t)].end_minute} min"
+                            if id(t) in entry_map
+                            else "—"
+                        ),
+                        "Task": t.title,
+                        "Pet": t.pet_name,
+                        "Priority": t.priority.capitalize(),
+                        "Duration": f"{t.duration_minutes} min",
+                        "Frequency": t.frequency.capitalize(),
+                        "Reason": entry_map[id(t)].reason if id(t) in entry_map else "",
                     }
-                    for e in display_entries
+                    for t in filtered_tasks
                 ]
             )
         else:
             st.info("No tasks match the current filter.")
 
+        # ── Dropped tasks ──
         if plan.dropped_tasks:
             st.write("### Dropped Tasks")
-            st.table(
-                [
-                    {
-                        "Task": e.task.title,
-                        "Pet": e.task.pet_name,
-                        "Reason": e.reason,
-                    }
-                    for e in plan.dropped_tasks
-                ]
+            for entry in plan.dropped_tasks:
+                st.warning(
+                    f"**{entry.task.title}** ({entry.task.pet_name}) — {entry.reason}"
+                )
+
+        # ── Summary metrics ──
+        st.divider()
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1:
+            st.metric("Scheduled", f"{len(plan.entries)} task(s)")
+        with col_m2:
+            st.metric("Dropped", f"{len(plan.dropped_tasks)} task(s)")
+        with col_m3:
+            st.metric(
+                "Time Used",
+                f"{plan.total_minutes_used} / {plan.total_minutes_available} min",
             )
 
-        st.info(plan.summary())
+        if plan.total_minutes_used == plan.total_minutes_available:
+            st.success("Time budget fully utilized!")
+        elif plan.total_minutes_used < plan.total_minutes_available:
+            remaining = plan.total_minutes_available - plan.total_minutes_used
+            st.info(f"{remaining} minute(s) remaining — room for more tasks.")

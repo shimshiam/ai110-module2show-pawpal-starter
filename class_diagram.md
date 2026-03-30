@@ -2,7 +2,7 @@
 
 ```mermaid
 classDiagram
-    direction LR
+    direction TB
 
     class Owner {
         +String name
@@ -27,6 +27,9 @@ classDiagram
         +String priority
         +String frequency
         +String pet_name
+        +bool is_completed
+        -Pet _owner_pet
+        +mark_complete() Optional~Task~
         +priority_value() int
         +is_recurring() bool
     }
@@ -35,15 +38,22 @@ classDiagram
         +Owner owner
         +int available_minutes
         +gather_tasks() list~Task~
-        +sort_by_priority(tasks: list~Task~) list~Task~
-        +detect_conflicts(tasks: list~Task~) tuple
+        +sort_by_priority(tasks) list~Task~
+        +sort_by_duration(tasks, ascending) list~Task~
+        +filter_by_pet(tasks, pet_name) list~Task~
+        +filter_by_status(tasks, completed) list~Task~
+        +fit_to_budget(tasks) tuple~list, list~
+        +detect_conflicts() list~String~
+        +detect_time_conflicts(plan) list~String~
+        +get_recurring_tasks() list~Task~
+        +reset_recurring_tasks() int
         +generate_plan() DailyPlan
     }
 
     class DailyPlan {
         +String owner_name
         +list~ScheduleEntry~ entries
-        +list~dict~ dropped_tasks
+        +list~ScheduleEntry~ dropped_tasks
         +int total_minutes_used
         +int total_minutes_available
         +display_schedule() str
@@ -59,8 +69,10 @@ classDiagram
 
     Owner "1" --> "*" Pet : has
     Pet "1" --> "*" Task : contains
+    Task "*" ..> "0..1" Pet : _owner_pet back-reference
     Scheduler --> Owner : reads
-    Scheduler --> DailyPlan : creates
+    Scheduler ..> Task : sorts / filters
+    Scheduler --> DailyPlan : creates and inspects
     DailyPlan "1" --> "*" ScheduleEntry : contains
     ScheduleEntry --> Task : wraps
 ```

@@ -22,6 +22,21 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Features
+
+- **Priority-first greedy scheduling** — tasks are sorted high-to-low by priority, with ties broken by shortest duration, then packed into the available time budget using a greedy fit algorithm
+- **Sorting by time** — sort any task list by duration (shortest or longest first) to quickly see what fits in a free window
+- **Sorting by priority** — sort by importance with automatic tiebreaking on duration so more tasks can be squeezed in
+- **Filter by pet** — isolate a single pet's tasks from the full list to focus on one animal at a time
+- **Filter by completion status** — view only incomplete or only completed tasks; filters chain with pet and sort for combined queries
+- **Daily recurrence** — completing a daily task automatically creates a fresh incomplete copy on the same pet for the next day
+- **Weekly recurrence** — same auto-creation logic applies to weekly tasks; one-time tasks simply finish with no follow-up
+- **Chained recurrence** — the auto-created copy is itself recurring, so completing it spawns yet another instance, day after day
+- **Pre-schedule conflict warnings** — before generating a plan, detects duplicate task titles on the same pet and flags any pet whose total task time exceeds the owner's available minutes
+- **Post-schedule time-overlap detection** — after generating a plan, scans all scheduled entries pairwise for overlapping time windows and labels each conflict as same-pet or cross-pet
+- **Lightweight warning strategy** — all conflict checks return a list of human-readable warning strings instead of raising exceptions, so the app never crashes on bad data
+- **Budget-aware task dropping** — tasks that don't fit the time budget are collected into a dropped list with a reason, so the owner knows exactly what was skipped and why
+
 ## Getting started
 
 ### Setup
