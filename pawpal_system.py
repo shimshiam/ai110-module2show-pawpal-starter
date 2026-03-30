@@ -30,7 +30,7 @@ class Pet:
     tasks: list[Task] = field(default_factory=list)
 
     def add_task(self, task: Task) -> None:
-        """Add a care task to this pet."""
+        """Add a care task to this pet and auto-set task.pet_name."""
         pass
 
     def remove_task(self, title: str) -> None:
@@ -84,7 +84,7 @@ class Scheduler:
         """Sort descending by priority, break ties by shorter duration first."""
         pass
 
-    def detect_conflicts(self, tasks: list[Task]) -> tuple[list[Task], list[Task]]:
+    def fit_to_budget(self, tasks: list[Task]) -> tuple[list[Task], list[Task]]:
         """Split sorted tasks into fitting vs. dropped based on time budget."""
         pass
 
@@ -100,7 +100,7 @@ class DailyPlan:
         self,
         owner_name: str,
         entries: Optional[list[ScheduleEntry]] = None,
-        dropped_tasks: Optional[list[dict]] = None,
+        dropped_tasks: Optional[list[ScheduleEntry]] = None,
         total_minutes_used: int = 0,
         total_minutes_available: int = 0,
     ):

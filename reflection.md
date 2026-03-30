@@ -18,8 +18,14 @@ See the final schedule with timing, reasoning for each task's placement, and a l
 
 **c. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+After reviewing the skeleton with AI, three changes were made:
+
+1. Renamed `detect_conflicts` to `fit_to_budget` Renaming it makes the intent clearer and leaves room for a real conflict-detection method later if needed.
+
+2. `Pet.add_task` now auto-sets `task.pet_name` Previously, callers had to pass `pet_name` manually when creating a Task, which was redundant and could cause errors. Having `add_task` handle it keeps the data consistent.
+
+3. `dropped_tasks` changed from `list[dict]` to `list[ScheduleEntry]`
+Reusing `ScheduleEntry` (with a reason string) keeps the output uniform and easier to display.
 
 ---
 
