@@ -11,6 +11,11 @@ class Task:
     priority: str  # "low", "medium", or "high"
     frequency: str  # "once", "daily", or "weekly"
     pet_name: str
+    is_completed: bool = False
+
+    def mark_complete(self) -> None:
+        """Mark this task as completed."""
+        self.is_completed = True
 
     def priority_value(self) -> int:
         """Return numeric weight: high=3, medium=2, low=1."""
