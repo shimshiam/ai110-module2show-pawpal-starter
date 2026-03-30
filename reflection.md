@@ -4,10 +4,19 @@
 
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+The initial design uses five classes and one helper dataclass. Owner holds the users name, time budget, and a list of pets. Pet stores the pets name, species, and its care tasks. Task represents a single activity with a title, duration, priority, and frequency. Scheduler gathers tasks from all pets, sorts by priority, checks what fits in the available time, and builds the plan. DailyPlan holds the final schedule with ordered entries, dropped tasks, and reasoning. ScheduleEntry is a small wrapper that pairs a task with its start/end time and a reason for its placement.
 
-**b. Design changes**
+Owner and Pet handle data entry, Scheduler owns the logic, and DailyPlan owns the output.
+
+**b. Core user actions**
+
+Add a pet and set up its care tasks, things like walks, feeding, or meds, each with a duration, priority, and how often it repeats.
+
+Click "Generate schedule" to build a daily plan that fits tasks into the time you have, tackling the important stuff first.
+
+See the final schedule with timing, reasoning for each task's placement, and a list of anything that got dropped.
+
+**c. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
