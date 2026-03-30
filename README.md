@@ -43,7 +43,30 @@ Beyond the base priority-first planner, the Scheduler now supports:
   - *Pre-schedule*: flags duplicate task titles on the same pet and per-pet time overload.
   - *Post-schedule*: scans the generated plan for overlapping time slots and labels each conflict as same-pet or cross-pet.
 
-All features are demonstrated in `main.py`, wired into the Streamlit UI in `app.py`, and covered by 21 passing tests.
+All features are demonstrated in `main.py`, wired into the Streamlit UI in `app.py`, and covered by 36 passing tests.
+
+### Testing PawPal+
+
+Run the full test suite with:
+
+```bash
+python -m pytest tests/test_pawpal.py -v
+```
+
+The 36 tests cover five areas:
+
+| Category | Tests | What they verify |
+|---|---|---|
+| Core behavior | 2 | Task completion, adding tasks to a pet |
+| Sorting correctness | 6 | Duration sort (asc/desc), priority sort, empty lists, stable ordering for ties |
+| Filtering | 4 | Filter by pet name, by completion status, unknown pet returns empty |
+| Recurring task logic | 8 | Daily/weekly auto-creation on complete, chained recurrence, one-time tasks stay finished, reset behavior |
+| Conflict detection | 7 | Same-pet overlap, cross-pet overlap, duplicate times, adjacent (touching) entries safe, multiple overlaps, warnings not exceptions |
+| Scheduling edge cases | 9 | Zero budget drops all, exact budget fits all, no pets produces empty plan, overload and duplicate pre-checks |
+
+**Confidence Level: 4/5 stars**
+
+The test suite covers happy paths, edge cases (empty lists, zero budget, no pets), and boundary conditions (adjacent time slots, chained recurrence). It earns 4 out of 5 because the core scheduling logic, sorting, filtering, recurrence, and conflict detection are all thoroughly verified. The missing star is because the Streamlit UI layer (`app.py`) is not tested with automated integration tests, and the scheduler does not yet handle real-world clock times or multi-day planning.
 
 ### Suggested workflow
 
