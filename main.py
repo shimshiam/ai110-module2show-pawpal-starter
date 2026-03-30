@@ -4,7 +4,7 @@ from pawpal_system import Owner, Pet, Task, Scheduler
 owner = Owner(name="Shiam", available_minutes=90, pets=[])
 
 # Create two pets
-dog = Pet(name="Bolt", species="dog")
+dog = Pet(name="Mint", species="dog")
 cat = Pet(name="Gigi", species="cat")
 
 # Add tasks OUT OF ORDER — mixed durations, priorities, and pets
