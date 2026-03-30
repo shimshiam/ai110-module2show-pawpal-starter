@@ -94,6 +94,18 @@ class Scheduler:
         """Sort descending by priority, break ties by shorter duration first."""
         return sorted(tasks, key=lambda t: (-t.priority_value(), t.duration_minutes))
 
+    def sort_by_duration(self, tasks: list[Task], ascending: bool = True) -> list[Task]:
+        """Sort tasks by duration. Ascending puts shortest first (default)."""
+        return sorted(tasks, key=lambda t: t.duration_minutes, reverse=not ascending)
+
+    def filter_by_pet(self, tasks: list[Task], pet_name: str) -> list[Task]:
+        """Return only tasks belonging to a specific pet."""
+        return [t for t in tasks if t.pet_name == pet_name]
+
+    def filter_by_status(self, tasks: list[Task], completed: bool) -> list[Task]:
+        """Return tasks filtered by completion status."""
+        return [t for t in tasks if t.is_completed == completed]
+
     def fit_to_budget(self, tasks: list[Task]) -> tuple[list[Task], list[Task]]:
         """Split sorted tasks into fitting vs. dropped based on time budget."""
         fitting = []
@@ -106,6 +118,57 @@ class Scheduler:
             else:
                 dropped.append(task)
         return fitting, dropped
+
+    def detect_conflicts(self) -> list[str]:
+        """Check for scheduling conflicts and return a list of warning strings.
+
+        Detects:
+        - Duplicate task titles assigned to the same pet
+        - A single pet's total task time exceeding the owner's available minutes
+        """
+        warnings: list[str] = []
+        all_tasks = self.gather_tasks()
+
+        # Check for duplicate titles per pet
+        seen: dict[str, set[str]] = {}  # pet_name -> set of titles
+        for task in all_tasks:
+            if task.pet_name not in seen:
+                seen[task.pet_name] = set()
+            if task.title in seen[task.pet_name]:
+                warnings.append(
+                    f"Duplicate: '{task.title}' is assigned to {task.pet_name} more than once"
+                )
+            else:
+                seen[task.pet_name].add(task.title)
+
+        # Check per-pet time overload
+        pet_time: dict[str, int] = {}
+        for task in all_tasks:
+            pet_time[task.pet_name] = pet_time.get(task.pet_name, 0) + task.duration_minutes
+        for pet_name, total in pet_time.items():
+            if total > self.available_minutes:
+                warnings.append(
+                    f"Overload: {pet_name}'s tasks need {total} min "
+                    f"but only {self.available_minutes} min available"
+                )
+
+        return warnings
+
+    def get_recurring_tasks(self) -> list[Task]:
+        """Return all tasks that repeat (daily or weekly)."""
+        return [t for t in self.gather_tasks() if t.is_recurring()]
+
+    def reset_recurring_tasks(self) -> int:
+        """Reset completed recurring tasks so they reappear in the next plan.
+
+        Returns the number of tasks that were reset.
+        """
+        count = 0
+        for task in self.gather_tasks():
+            if task.is_recurring() and task.is_completed:
+                task.is_completed = False
+                count += 1
+        return count
 
     def generate_plan(self) -> "DailyPlan":
         """Main method: gather -> sort -> fit to budget -> build and return a DailyPlan."""

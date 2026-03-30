@@ -35,3 +35,43 @@ print()
 print("-" * 50)
 print(plan.summary())
 print("=" * 50)
+
+# --- New features demo ---
+
+# 1. Sort by duration (shortest first)
+all_tasks = scheduler.gather_tasks()
+by_duration = scheduler.sort_by_duration(all_tasks)
+print("\nTasks sorted by duration (shortest first):")
+for t in by_duration:
+    print(f"  {t.title} ({t.pet_name}) — {t.duration_minutes} min")
+
+# 2. Filter by pet
+bolt_tasks = scheduler.filter_by_pet(all_tasks, "Bolt")
+print(f"\nBolt's tasks ({len(bolt_tasks)}):")
+for t in bolt_tasks:
+    print(f"  {t.title} — {t.priority} priority")
+
+# 3. Filter by status
+incomplete = scheduler.filter_by_status(all_tasks, completed=False)
+print(f"\nIncomplete tasks: {len(incomplete)}")
+
+# 4. Recurring tasks
+recurring = scheduler.get_recurring_tasks()
+print(f"\nRecurring tasks ({len(recurring)}):")
+for t in recurring:
+    print(f"  {t.title} ({t.pet_name}) — {t.frequency}")
+
+# 5. Conflict detection
+conflicts = scheduler.detect_conflicts()
+if conflicts:
+    print("\nConflicts detected:")
+    for warning in conflicts:
+        print(f"  ⚠ {warning}")
+else:
+    print("\nNo conflicts detected.")
+
+# 6. Reset recurring tasks after completing some
+dog.tasks[0].mark_complete()  # Complete "Morning walk"
+cat.tasks[0].mark_complete()  # Complete "Feeding"
+reset_count = scheduler.reset_recurring_tasks()
+print(f"\nReset {reset_count} recurring task(s) for the next day.")
