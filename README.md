@@ -92,3 +92,77 @@ The test suite covers happy paths, edge cases (empty lists, zero budget, no pets
 5. Add tests to verify key behaviors.
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
+
+---
+
+## 📸 Demo
+![alt text](pawpaldemo.png)
+
+### Terminal — `python main.py`
+
+**Daily schedule generation** — priority-first, greedy fit into 90 minutes:
+
+```
+Schedule for Shiam:
+
+  [0-5 min] Vet medication (Mint)        — High priority — scheduled first
+  [5-10 min] Litter box cleaning (Gigi)  — High priority — next available slot
+  [10-20 min] Feeding (Gigi)             — High priority — next available slot
+  [20-50 min] Morning walk (Mint)        — High priority — next available slot
+  [50-65 min] Grooming (Gigi)            — Medium priority — next available slot
+  [65-80 min] Grooming (Gigi)            — Medium priority — next available slot
+  [80-90 min] Nail trimming (Mint)       — Low priority — next available slot
+
+Dropped tasks:
+  Training session (Mint) — Not enough time remaining
+  Play with laser (Gigi)  — Not enough time remaining
+  Brush fur (Mint)        — Not enough time remaining
+
+7 task(s) scheduled, 4 dropped. Time used: 90/90 minutes.
+```
+
+**Sorting by duration** — shortest first at a glance:
+
+```
+  Vet medication           5 min
+  Litter box cleaning      5 min
+  Nail trimming           10 min
+  Feeding                 10 min
+  Grooming                15 min
+  Training session        20 min
+  Play with laser         20 min
+  Morning walk            30 min
+```
+
+**Conflict detection** — three tasks forced to the same start time:
+
+```
+  [B] Three tasks all starting at minute 0 — 3 conflict(s):
+      WARNING: Same-pet (Bolt) overlap: 'Morning walk' [0-30] and 'Vet medication' [0-5] share 5 min
+      WARNING: Cross-pet (Bolt & Gigi) overlap: 'Morning walk' [0-30] and 'Feeding' [0-10] share 10 min
+      WARNING: Cross-pet (Bolt & Gigi) overlap: 'Vet medication' [0-5] and 'Feeding' [0-10] share 5 min
+```
+
+**Recurring auto-creation** — completing a daily task spawns the next one:
+
+```
+  Before: Mint has 6 tasks
+  Completing 'Morning walk' (frequency=daily)...
+  After:  Mint has 7 tasks
+  New task: 'Morning walk' — completed=False, pet=Mint
+```
+
+### Streamlit — `python -m streamlit run app.py`
+
+The web UI includes:
+- Owner and pet setup with remove buttons per pet
+- Task entry with duration, priority, and frequency controls
+- Sort and filter dropdowns (by priority, duration, pet, or status)
+- Pre-schedule conflict warnings and post-schedule overlap detection
+- Summary metrics (scheduled count, dropped count, time used)
+
+### Tests — `python -m pytest tests/test_pawpal.py -v`
+
+```
+36 passed in 0.09s
+```

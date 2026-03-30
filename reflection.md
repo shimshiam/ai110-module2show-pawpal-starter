@@ -51,8 +51,9 @@ The most helpful prompts were the ones that were specific about what I wanted. A
 
 **b. Judgment and verification**
 
-- Describe one moment where you did not accept an AI suggestion as-is.
-- How did you evaluate or verify what the AI suggested?
+When AI added the conflict detection demo in main.py, it originally built fake ScheduleEntry objects with hardcoded indexes like `dog.tasks[1]` and `dog.tasks[3]` to force overlapping times. I replaced it with a version that creates fresh Task objects with clear names like "Morning walk" and "Vet medication". That way the demo is readable and wont break if the task list changes.
+
+To verify the code suggestions, I ran the tests after every change. I also ran main.py to visually confirm the output made sense.
 
 ---
 
@@ -60,13 +61,13 @@ The most helpful prompts were the ones that were specific about what I wanted. A
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+Filtering by pet name and by completion status. Recurring task logic to confirm that completing a daily or weekly task creates a new one, that chaining works and that one time tasks dont repeat. Conflict detection to verify overlaps, duplicate times, and that adjacent tasks touching at the same minute dont get falsely flagged.
+
+These tests were important because the scheduler has a lot of dependent moving parts. Sorting feeds into the budget fit, which feeds into conflict detection. If any one piece is wrong then it all breaks, so testing each layer separately catches bugs efficiently.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+4 out of 5. The core logic, sorting, filtering, recurrence, and conflict detection are all covered with happy paths and edge cases. Streamlit UI doesn't have automated tests so I can only verify it manually.
 
 ---
 
@@ -74,12 +75,12 @@ The most helpful prompts were the ones that were specific about what I wanted. A
 
 **a. What went well**
 
-- What part of this project are you most satisfied with?
+Having two layers where one checks the raw task list before scheduling and one that scans the actual plan for time overlaps, catches problems at different stages without ever crashing the app. I'm also happy with how the recurring task logic works. Completing a daily task and seeing a new one automatically appear on the same pet.
 
 **b. What you would improve**
 
-- If you had another iteration, what would you improve or redesign?
+I'd add real clock times instead of just minute offsets.
 
 **c. Key takeaway**
 
-- What is one important thing you learned about designing systems or working with AI on this project?
+The biggest thing I learned is that being specific with AI prompts makes a huge difference. But I also learned that you cant just accept everything AI gives you. You have to run the tests, read the code, and make sure it actually fits your project.

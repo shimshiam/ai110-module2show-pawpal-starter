@@ -98,21 +98,21 @@ else:
         pet.add_task(new_task)
         st.success(f"Added '{task_title}' to {pet.name}!")
 
-    # Show tasks per pet with remove buttons
+    # Show tasks per pet
     for pet in st.session_state.owner.pets:
         if pet.tasks:
             st.write(f"**{pet.name}'s tasks:**")
-            for task in pet.tasks:
-                col_info, col_del = st.columns([4, 1])
-                with col_info:
-                    st.write(
-                        f"{task.title} — {task.duration_minutes} min, "
-                        f"{task.priority}, {task.frequency}"
-                    )
-                with col_del:
-                    if st.button("Remove", key=f"remove_task_{pet.name}_{task.title}"):
-                        pet.remove_task(task.title)
-                        st.rerun()
+            st.table(
+                [
+                    {
+                        "Title": t.title,
+                        "Duration": f"{t.duration_minutes} min",
+                        "Priority": t.priority,
+                        "Frequency": t.frequency,
+                    }
+                    for t in pet.tasks
+                ]
+            )
 
 st.divider()
 
