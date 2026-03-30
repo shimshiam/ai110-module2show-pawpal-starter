@@ -79,6 +79,10 @@ class Owner:
         """Add a pet to the owner's list."""
         self.pets.append(pet)
 
+    def remove_pet(self, name: str) -> None:
+        """Remove a pet by name."""
+        self.pets = [p for p in self.pets if p.name != name]
+
     def total_task_count(self) -> int:
         """Return the combined number of tasks across all pets."""
         return sum(len(pet.tasks) for pet in self.pets)

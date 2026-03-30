@@ -45,8 +45,9 @@ The scheduler just goes down the list from most important to least important and
 
 **a. How you used AI**
 
-- How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
-- What kinds of prompts or questions were most helpful?
+I used it for design brainstorming, asking things like "suggest small algorithms that would make a pet scheduler more efficient". During implementation I gave it specific build prompts like "implement a method that filters tasks by completion status or pet name" and it wrote the logic directly into my Scheduler class. 
+
+The most helpful prompts were the ones that were specific about what I wanted. Asking it to explain tradeoffs before writing code also helped me understand what I was building instead of just copying answers.
 
 **b. Judgment and verification**
 

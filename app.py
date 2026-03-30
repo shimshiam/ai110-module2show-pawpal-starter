@@ -51,10 +51,15 @@ if st.session_state.owner is not None:
     st.session_state.owner.available_minutes = available_minutes
 
 if st.session_state.owner and st.session_state.owner.pets:
-    st.write(
-        "**Pets:**",
-        ", ".join(f"{p.name} ({p.species})" for p in st.session_state.owner.pets),
-    )
+    st.write("**Pets:**")
+    for pet in st.session_state.owner.pets:
+        col_pname, col_premove = st.columns([4, 1])
+        with col_pname:
+            st.write(f"{pet.name} ({pet.species})")
+        with col_premove:
+            if st.button("Remove", key=f"remove_pet_{pet.name}"):
+                st.session_state.owner.remove_pet(pet.name)
+                st.rerun()
 
 st.divider()
 
@@ -93,21 +98,21 @@ else:
         pet.add_task(new_task)
         st.success(f"Added '{task_title}' to {pet.name}!")
 
-    # Show tasks per pet
+    # Show tasks per pet with remove buttons
     for pet in st.session_state.owner.pets:
         if pet.tasks:
             st.write(f"**{pet.name}'s tasks:**")
-            st.table(
-                [
-                    {
-                        "Title": t.title,
-                        "Duration": f"{t.duration_minutes} min",
-                        "Priority": t.priority,
-                        "Frequency": t.frequency,
-                    }
-                    for t in pet.tasks
-                ]
-            )
+            for task in pet.tasks:
+                col_info, col_del = st.columns([4, 1])
+                with col_info:
+                    st.write(
+                        f"{task.title} — {task.duration_minutes} min, "
+                        f"{task.priority}, {task.frequency}"
+                    )
+                with col_del:
+                    if st.button("Remove", key=f"remove_task_{pet.name}_{task.title}"):
+                        pet.remove_task(task.title)
+                        st.rerun()
 
 st.divider()
 
